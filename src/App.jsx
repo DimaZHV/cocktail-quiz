@@ -13,10 +13,12 @@ function getRandomIngredients(exclude, count) {
 }
 
 function App() {
-	const [currentCocktailIndex, setCurrentCocktailIndex] = useState(0);
+	const [currentCocktailIndex, setCurrentCocktailIndex] = useState(
+		Math.floor(Math.random() * cocktails.length)
+	);
 	const [mixedIngredients, setMixedIngredients] = useState([]);
 	const [userInput, setUserInput] = useState({});
-	const [result, setResult] = useState(null); // 'correct' | 'incorrect' | null
+	const [result, setResult] = useState(null);
 
 	const currentCocktail = cocktails[currentCocktailIndex];
 
@@ -45,15 +47,25 @@ function App() {
 			currentCocktail.ingredients.map((i) => [i.name, i.amount])
 		);
 		const userKeys = Object.keys(userInput);
-		const allCorrect = Object.entries(correctMap).every(
-			([name, amount]) => parseInt(userInput[name]) === amount
-		);
+
+		const allCorrect = Object.entries(correctMap).every(([name, amount]) => {
+			const userValue = userInput[name];
+
+			if (amount === "так") return userValue === "так";
+			if (Array.isArray(amount)) return amount.includes(Number(userValue));
+			return Number(userValue) === amount;
+		});
+
 		const noExtra = userKeys.every((key) => correctMap[key] !== undefined);
 		setResult(allCorrect && noExtra ? "correct" : "incorrect");
 	};
 
 	const nextCocktail = () => {
-		setCurrentCocktailIndex((prev) => (prev + 1) % cocktails.length);
+		let nextIndex;
+		do {
+			nextIndex = Math.floor(Math.random() * cocktails.length);
+		} while (nextIndex === currentCocktailIndex);
+		setCurrentCocktailIndex(nextIndex);
 	};
 
 	return (
@@ -64,12 +76,28 @@ function App() {
 					<div key={index} style={{ marginBottom: 8 }}>
 						<label>
 							{ingredient.name}:&nbsp;
-							<input
-								type="number"
-								value={userInput[ingredient.name] || ""}
-								onChange={(e) => handleChange(ingredient.name, e.target.value)}
-								disabled={result !== null}
-							/>
+							{ingredient.amount === "так" ? (
+								<select
+									value={userInput[ingredient.name] || ""}
+									onChange={(e) =>
+										handleChange(ingredient.name, e.target.value)
+									}
+									disabled={result !== null}
+								>
+									<option value="">—</option>
+									<option value="так">так</option>
+									<option value="ні">ні</option>
+								</select>
+							) : (
+								<input
+									type="number"
+									value={userInput[ingredient.name] || ""}
+									onChange={(e) =>
+										handleChange(ingredient.name, e.target.value)
+									}
+									disabled={result !== null}
+								/>
+							)}
 						</label>
 					</div>
 				))}
@@ -90,7 +118,12 @@ function App() {
 								<ul>
 									{currentCocktail.ingredients.map((i, idx) => (
 										<li key={idx}>
-											{i.name}: {i.amount} г
+											{i.name}:{" "}
+											{Array.isArray(i.amount)
+												? `${Math.min(...i.amount)}–${Math.max(...i.amount)} г`
+												: i.amount === "так"
+												? "так"
+												: `${i.amount} г`}
 										</li>
 									))}
 								</ul>
